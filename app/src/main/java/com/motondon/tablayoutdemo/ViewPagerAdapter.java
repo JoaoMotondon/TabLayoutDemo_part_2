@@ -14,14 +14,14 @@ import java.util.List;
  *
  * !!!!!!!!!!!!!!!!!IMPORTANT!!!!!!!!!!!!!!!!!!!!!!
  * Since we are updating viewPager dynamically (i.e.: by adding and removing tabs), WE MUST EXTEND FragmentStatePagerAdapter AND NOT
- * FragmentPagerAdapter. Also we must override getItemPosition() and return "PagerAdapter.POSITION_NONE" in order to adapter to refresh
+ * FragmentPagerAdapter. Also we must override getItemPosition() and return "PagerAdapter.POSITION_NONE" in order for the adapter to refresh
  * its data.
  *
  * From the Documentation:
- *   - When using FragmentPagerAdapter, the fragment of each page the user visits will be kept in memory,
- * though its view hierarchy may be destroyed when not visible.
+ *   - "When using FragmentPagerAdapter, the fragment of each page the user visits will be kept in memory,
+ * though its view hierarchy may be destroyed when not visible."
  *
- *   - When using FragmentStatePagerAdapter, fragments will be destroyed when lose focus. On our case, when we remove a
+ *   - "When using FragmentStatePagerAdapter, fragments will be destroyed when lose focus." On our case, when we remove a
  * fragment from the viewPager, it will also be destroy.
  *
  * So, if we use FragmentPagerAdapter, when we remove a tab, since it will never be destroyed, we will end up with inconsistency
@@ -36,23 +36,25 @@ import java.util.List;
  * ----------------------------------------
  *
  * Another important question is about orientation change. Since we can add or remove a tab dynamically we need a way to make them available
- * after an orientation change. Note that we must use only those that were current available before the orientation change, including the ones
+ * after an orientation change. Note that we must add only those that were available before the orientation change, including the ones
  * user might have created dynamically and avoid those user might have deleted. There are basically two approaches to achieve our goal:
  *
- *    1o) Before calling super.onSaveInstanceState() we will destroy all fragments (thanks to the FragmentStatePagerAdapter which will not keep them),
- *        and retain a list of the fragment classes name and titles. We need to keep the fully qualified class name since we will use reflection in order
- *        to reconstruct them. Then, recreate them on activity onCreate (using reflection) and if one of the items is an instance of GenericFragment,
- *        we need also to set its title, since it can be something like "Generic 1", "Generic 2" , etc (and not a const name).
+ *    1o) Before calling super.onSaveInstanceState() we will retain a list of the fragment classes name and titles. Then destroy all fragments
+ *        (thanks to the FragmentStatePagerAdapter which will not keep them). Note we need to keep the fully qualified class name since we will use
+ *        reflection in order to reconstruct them. Then, recreate them on activity onCreate (using reflection) and if one of the items is an instance
+ *        of GenericFragment (i.e.: a fragment which was added dynamically and not those ones added at the app startup), we need also to set its title,
+ *        since it can be something like "Generic 1", "Generic 2" , etc (and not a constant name).
  *
  *    2o) Save a list of current fragments on onSaveInstanceState() and add them back to the adapter on activity onCreate(). For this to work we need all
  *        fragments to be marked with setRetainInstance(true).
  *
- *    The difference from both approaches is that the first one will use more memory during orientation changes, but will be faster when adding
- *    them back to the adapter. On the other hand, the second approach will use much less memory, since we are storing only the fragments classes names and
- *    their titles, but it will take longer to recreate them (and also will be a little complicated to use).
+ *    The difference from both approaches is that the first one is supposed to use more memory during the orientation change (since we are holding all
+ *    fragment instances), but will be faster when adding them back to the adapter. On the other hand, the second approach will use much less memory
+ *    (once we are storing only the fragments classes names) at the cost of more overhead when recreating them (we need to recreate all fragments by
+ *    using reflection).
  *
- *    Using one or another will depends on how many fragments a viewPager can contain. If we are dealing with a huge number of fragment, maybe
- *    the first one might not be a good choice. Overall, there are here so anyone can use that one better suits for the needs.
+ *    Using one or another depends on the requirements of your app, for example how many fragments a viewPager contains. If we are dealing with a huge
+ *    number of fragment, maybe the first one may not be a good choice. 
  *
  *    Note: These two approaches were taken from this great SO question:
  *    http://stackoverflow.com/questions/7951730/viewpager-and-fragments-whats-the-right-way-to-store-fragments-state?rq=1

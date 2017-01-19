@@ -37,8 +37,9 @@ import butterknife.ButterKnife;
  *   1) Hold a reference for all existent fragment on onSaveInstanceState method and add them back to the adapter on
  *      onCreate() method.
  *
- *   2) Remove all existent fragments prior to change rotate (on onSaveInstanceState), then hold a list of all fragments
- *      class names which will be used on onCreate() to recreate them by using reflection.
+ *   2) store a list of the current fragments classes names and then destroy all of them.  Note that we need to store the
+ *      fully qualified fragment’s names since we will use reflection when reconstructing them. Then, recreate them in the
+ *      Activity’s onCreate.
  *
  * For both approaches, all the hard work are done on onSaveInstanceState() and onCreate() methods. Also there are a couple
  * of helper methods in the ViewPagerAdapter class.
@@ -109,26 +110,24 @@ public class MainActivity extends AppCompatActivity {
             // from the bundle.
             if (ORIENTATION_CHANGE_METHOD == OrientationChangeMethod.RETAIN_FRAGMENT) {
 
-                // If using RETAIN_FRAGMENT which as the name implies will retaining all current fragments, all we need is to add them back to the adapter.
-                // See ViewPagerAdapter class scope comments for details.
+                // If using RETAIN_FRAGMENT, as the name implies, all current fragments is retained in the onSaveInstanceState method. So, all we need to
+                // do is to add them back to the adapter.
                 List<Fragment> currentPages = (List<Fragment>) savedInstanceState.getSerializable(CURRENT_PAGES);
                 if (currentPages.size() > 0) {
                     viewPagerAdapter.setPages(currentPages);
                 }
             } else {
 
-                // When using RECREATE_FRAGMENT, since we removed all fragments before change the orientation, we need now to reconstruct them.  Note that for the
-                // fragments that were created dynamically we need also an extra step in oder to set their titles which might be something like  "Generic 1", "Generic 2".
-                // See ViewPagerAdapter class scope comments for details.
+                // When using RECREATE_FRAGMENT, since all fragments were before the orientation change, we need now to reconstruct them. Note that for the
+                // fragments that were created dynamically we need also an extra step in oder to set their titles which is something like "Generic 1", "Generic 2".
                 List<String> currentPagesClassNames = (List<String>) savedInstanceState.getSerializable(CURRENT_PAGES_CLASS_NAMES);
                 List<String> currentPagesTitles = (List<String>) savedInstanceState.getSerializable(CURRENT_PAGES_TITLES);
 
                 if (currentPagesClassNames.size() > 0) {
 
-                    // This is the list used later to add the fragments to the adapter
                     List<Fragment> fragmentList = new ArrayList<>();
 
-                    // For each existent fragment prior the orientation change, we will create a new instance of it by using reflection. This is why we stored the
+                    // For each existent fragment, prior the orientation change, we will create a new instance of it by using reflection. This is why we stored the
                     // fully qualified class name. Note that if something wrong happens during the class creation, we are just printing the stack. In a real application we should
                     // account for that in a better way.
                     for (int x = 0; x < currentPagesClassNames.size(); x++) {
@@ -174,19 +173,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle savedInstanceState) {
         if (ORIENTATION_CHANGE_METHOD == OrientationChangeMethod.RETAIN_FRAGMENT) {
 
-            // When using RETAIN_FRAGMENT method, ust store a list of all current fragment in order to be able to add them back to the adapter after
-            // the orientation change. See ViewPagerAdapter class scope comments for details.
+            // When using RETAIN_FRAGMENT method, just store a list of all current fragments in order to be able to add them back to the adapter after
+            // the orientation change.
             savedInstanceState.putSerializable(CURRENT_PAGES, (Serializable) viewPagerAdapter.getPages());
 
         } else {
 
-            // When using RECREATE_FRAGMENT method, which will recreate all the current fragments instead of retain them we need to store the full fragment classes names
-            // since we will  use reflection on onCreate() method. See ViewPagerAdapter class scope comments for details.
+            // When using RECREATE_FRAGMENT method, which will recreate all the current fragments instead of retain them, we need to store the fully qualified fragment classes names
+            // since we will use reflection on onCreate() method.
             savedInstanceState.putSerializable(CURRENT_PAGES_CLASS_NAMES, (Serializable) viewPagerAdapter.getPagesClassName());
             // Note that if user created a new fragment dynamically its title will be something like "Generic 1", "Generic 2", so we need to also keep a list of all
             // fragments title in order to be able to reconstruct them accordingly.
             savedInstanceState.putSerializable(CURRENT_PAGES_TITLES, (Serializable) viewPagerAdapter.getPageTitles());
-            // Now, after save all needed information, remove all fragments from the adapter. On this approach, they will be recreated later on onCreate() method.
+            // Now, after save all information we need, remove all fragments from the adapter. In this approach, they will be recreated later on onCreate() method.
             viewPagerAdapter.removeAllFragments(getSupportFragmentManager());
         }
 
@@ -216,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * As the name implies, this method created a long-click listener for the given tabIndex
+     * As the name implies, this method creates a long-click listener for the given tabIndex
      *
      * @param tabIndex
      */
@@ -272,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
+                // Nothing to do here.
             }
         });
 
@@ -283,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * This method will add a tab dynamically. Note it will take care of create instances of the GenericFragment class as well as
-     * mount the fragment title in order to show the number of the fragment. This makes easy to confirm fragments are being
+     * mount the fragment title in order to show the number of the fragment. This makes easy to confirm that fragments are being
      * retained/recreated after a screen rotate accordingly.
      *
      * Note we are limiting in 4 new tabs. If you want more, just change MAX_NUMBER_OF_NEW_TABS attribute.
@@ -307,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
         genericFragment.mountFragmentName(genericFragmentCount);
         viewPagerAdapter.addTabPage(genericFragment);
 
-        // Also re-create long-click listener for all tabs, including the just created one.
+        // Also re-create the long-click listener for all tabs, including the just created one.
         // TODO: Here we could improve a little, by instead of re-create long-click listener for all tabs, just create for the new one.
         if (tabLayout.getChildCount() > 0) {
             LinearLayout tabStrip = (LinearLayout) tabLayout.getChildAt(0);
